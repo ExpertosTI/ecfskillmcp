@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "dgii-ecf-certification": {
+      "command": "python3",
+      "args": [
+        "/Users/brainiacx/dgii-ecf-certification-kit/mcp_server/dgii_certification_mcp.py"
+      ],
+      "env": {
+        "RENECF_VPS_HOST": "root@93.127.217.52"
+      }
+    }
+  }
+}
