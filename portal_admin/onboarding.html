@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Onboarding Contribuyentes DGII — Renace e-CF</title>
+    <meta name="description" content="Portal rápido de incorporación y certificación de clientes para Facturación Electrónica DGII República Dominicana (Ley 32-23).">
+    <meta name="theme-color" content="#080D18">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-deep: #080D18;
+            --bg-surface: #0F172A;
+            --bg-card: rgba(15, 23, 42, 0.75);
+            --bg-glass: rgba(15, 23, 42, 0.9);
+            --accent: #38BDF8;
+            --accent-glow: rgba(56, 189, 248, 0.25);
+            --accent-green: #34D399;
+            --accent-purple: #818CF8;
+            --text-primary: #F8FAFC;
+            --text-secondary: #94A3B8;
+            --text-muted: #64748B;
+            --border: rgba(255, 255, 255, 0.08);
+            --border-glow: rgba(56, 189, 248, 0.3);
+            --radius-lg: 16px;
+            --radius-md: 10px;
+            --radius-sm: 6px;
+            --shadow-glow: 0 0 35px rgba(56, 189, 248, 0.15);
+            --font-sans: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+            --font-mono: "JetBrains Mono", monospace;
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: var(--font-sans);
+            background-color: var(--bg-deep);
+            color: var(--text-primary);
+            line-height: 1.5;
+            min-height: 100vh;
+            background-image: 
+                radial-gradient(circle at 10% 10%, rgba(56, 189, 248, 0.08) 0%, transparent 40%),
+                radial-gradient(circle at 90% 90%, rgba(129, 140, 248, 0.08) 0%, transparent 40%);
+        }
+
+        .header {
+            background: var(--bg-glass);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .container { max-width: 960px; margin: 0 auto; padding: 0 20px; }
+        .nav-inner { display: flex; align-items: center; justify-content: space-between; }
+        .logo-box { display: flex; align-items: center; gap: 12px; font-weight: 800; font-size: 1.2rem; color: #fff; text-decoration: none; }
+        .badge { font-size: 0.7rem; padding: 3px 8px; border-radius: 20px; font-weight: 600; text-transform: uppercase; }
+        .badge-accent { background: rgba(56, 189, 248, 0.15); color: var(--accent); border: 1px solid var(--border-glow); }
+        .badge-green { background: rgba(52, 211, 153, 0.15); color: var(--accent-green); border: 1px solid rgba(52, 211, 153, 0.3); }
+
+        .hero-banner { text-align: center; padding: 40px 0 24px; }
+        .hero-title { font-size: 2.2rem; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 8px; background: linear-gradient(135deg, #fff 40%, var(--accent) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .hero-desc { color: var(--text-secondary); font-size: 1rem; max-width: 600px; margin: 0 auto; }
+
+        .tabs-nav { display: flex; justify-content: center; gap: 12px; margin-bottom: 30px; }
+        .tab-btn {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            padding: 10px 20px;
+            border-radius: var(--radius-md);
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .tab-btn.active {
+            background: rgba(56, 189, 248, 0.15);
+            color: #fff;
+            border-color: var(--accent);
+            box-shadow: var(--shadow-glow);
+        }
+
+        .card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 32px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            margin-bottom: 30px;
+        }
+
+        .step-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; margin-top: 24px; }
+        .step-header:first-of-type { margin-top: 0; }
+        .step-num { width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: #080D18; font-weight: 800; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; }
+        .step-title { font-size: 1.15rem; font-weight: 700; color: #fff; }
+
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 12px; }
+        .form-group { display: flex; flex-direction: column; gap: 6px; }
+        .form-group.full { grid-column: span 2; }
+        label { font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); }
+        input[type="text"], input[type="email"], input[type="password"] {
+            background: var(--bg-deep);
+            border: 1px solid var(--border);
+            padding: 12px 14px;
+            border-radius: var(--radius-sm);
+            color: #fff;
+            font-size: 0.95rem;
+            font-family: inherit;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        input:focus { border-color: var(--accent); }
+        .file-box {
+            background: var(--bg-deep);
+            border: 1px dashed var(--border);
+            padding: 16px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            text-align: center;
+            transition: border-color 0.2s;
+        }
+        .file-box:hover { border-color: var(--accent); }
+        input[type="file"] { width: 100%; color: var(--text-secondary); font-size: 0.85rem; }
+
+        .btn-submit {
+            width: 100%;
+            background: linear-gradient(135deg, var(--accent) 0%, #0284C7 100%);
+            color: #080D18;
+            font-weight: 800;
+            font-size: 1.05rem;
+            padding: 14px;
+            border-radius: var(--radius-md);
+            border: none;
+            cursor: pointer;
+            margin-top: 24px;
+            transition: transform 0.15s, box-shadow 0.2s;
+        }
+        .btn-submit:hover { transform: translateY(-1px); box-shadow: var(--shadow-glow); }
+        .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .live-status {
+            margin-top: 20px;
+            padding: 16px;
+            border-radius: var(--radius-sm);
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid var(--border);
+            display: none;
+        }
+        .live-status.success { border-color: var(--accent-green); background: rgba(52, 211, 153, 0.08); }
+        .live-status.error { border-color: #EF4444; background: rgba(239, 68, 68, 0.08); }
+
+        .info-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.8rem;
+            color: var(--accent-green);
+            margin-top: 4px;
+        }
+    </style>
+</head>
+<body>
+
+    <header class="header">
+        <div class="container nav-inner">
+            <a href="/" class="logo-box">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#38BDF8" stroke-width="2.5"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+                <span>RENACE e-CF</span>
+            </a>
+            <div style="display: flex; gap: 8px;">
+                <span class="badge badge-accent">Onboarding SaaS</span>
+                <span class="badge badge-green">Ley 32-23</span>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="hero-banner">
+            <h1 class="hero-title">Incorporación Rápida de Clientes</h1>
+            <p class="hero-desc">Registra a tus contribuyentes y firma su documentación oficial DGII en 3 sencillos pasos, sin fricciones ni contraseñas maestras.</p>
+        </div>
+
+        <div class="tabs-nav">
+            <button class="tab-btn active" id="tabOnboardBtn" onclick="switchTab(\"onboard\")">1. Registrar y Certificar Contribuyente</button>
+            <button class="tab-btn" id="tabSignBtn" onclick="switchTab(\"sign\")">2. Firmador de Postulación XML DGII</button>
+        </div>
+
+        <!-- TAB 1: ONBOARDING REGISTRO -->
+        <div id="tabOnboard" class="card">
+            <form id="onboardForm" onsubmit="handleOnboard(event)">
+                
+                <!-- PASO 1 -->
+                <div class="step-header">
+                    <span class="step-num">1</span>
+                    <h3 class="step-title">Identificación del Contribuyente</h3>
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="rncInput">RNC o Cédula (9 u 11 dígitos) *</label>
+                        <input type="text" id="rncInput" name="rnc" placeholder="Ej: 132842316 o 06600129545" required maxlength="11" oninput="autoLookupRnc(this.value)">
+                        <div id="rncStatus" class="info-pill" style="display:none;"></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="rsInput">Razón Social o Nombre Legal *</label>
+                        <input type="text" id="rsInput" name="razon_social" placeholder="Autocompletado desde DGII..." required>
+                    </div>
+                    <div class="form-group">
+                        <label for="emailInput">Correo Electrónico de Notificaciones</label>
+                        <input type="email" id="emailInput" name="email" placeholder="cliente@empresa.com">
+                    </div>
+                    <div class="form-group">
+                        <label for="telInput">Teléfono / WhatsApp</label>
+                        <input type="text" id="telInput" name="telefono" placeholder="+1 (809) 000-0000">
+                    </div>
+                </div>
+
+                <!-- PASO 2 -->
+                <div class="step-header">
+                    <span class="step-num">2</span>
+                    <h3 class="step-title">Certificado Digital (.p12 / .pfx)</h3>
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Archivo Certificado (.p12 o .pfx) *</label>
+                        <div class="file-box">
+                            <input type="file" id="certFileInput" name="cert_file" accept=".p12,.pfx" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="certPassInput">Contraseña del Certificado *</label>
+                        <input type="password" id="certPassInput" name="cert_password" placeholder="Clave privada del .p12" required autocomplete="new-password">
+                    </div>
+                </div>
+
+                <!-- PASO 3 -->
+                <div class="step-header">
+                    <span class="step-num">3</span>
+                    <h3 class="step-title">Set de Pruebas DGII (Excel Opcional / Inmediato)</h3>
+                </div>
+                <div class="form-group full">
+                    <label>Archivo Excel emitido por la DGII (.xlsx)</label>
+                    <div class="file-box">
+                        <input type="file" id="excelFileInput" name="excel_file" accept=".xlsx,.xls">
+                    </div>
+                    <small style="color:var(--text-muted); margin-top:4px; display:block;">Si ya lo descargaste de la OFV tras la postulación, súbelo para procesar el Set de Pruebas.</small>
+                </div>
+
+                <button type="submit" class="btn-submit" id="onboardSubmitBtn">Registrar e Incorporar Contribuyente</button>
+            </form>
+
+            <div id="onboardResult" class="live-status"></div>
+        </div>
+
+        <!-- TAB 2: FIRMADOR POSTULACION XML -->
+        <div id="tabSign" class="card" style="display:none;">
+            <div class="hero-banner" style="padding: 10px 0 20px;">
+                <h3 style="font-size:1.4rem; font-weight:700;">Firmador Digital de Postulación DGII</h3>
+                <p style="color:var(--text-secondary); font-size:0.9rem;">Sube el XML generado en la Oficina Virtual junto con tu certificado .p12 para firmarlo en XAdES-BES en 1 segundo.</p>
+            </div>
+
+            <form id="signForm" onsubmit="handleSignXml(event)">
+                <div class="form-group full" style="margin-bottom:16px;">
+                    <label>1. Archivo XML de Postulación (Descargado de DGII) *</label>
+                    <div class="file-box">
+                        <input type="file" id="xmlPostInput" name="xml_file" accept=".xml" required>
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>2. Certificado Digital (.p12 / .pfx) *</label>
+                        <div class="file-box">
+                            <input type="file" id="p12PostInput" name="p12_file" accept=".p12,.pfx" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>3. Contraseña del Certificado *</label>
+                        <input type="password" id="p12PassInput" name="password" placeholder="Clave privada del .p12" required autocomplete="new-password">
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-submit" id="signSubmitBtn">⚡ Firmar XML y Descargar</button>
+            </form>
+
+            <div id="signResult" class="live-status"></div>
+        </div>
+
+    </div>
+
+    <script>
+        function switchTab(tab) {
+            document.getElementById("tabOnboard").style.display = tab === "onboard" ? "block" : "none";
+            document.getElementById("tabSign").style.display = tab === "sign" ? "block" : "none";
+            document.getElementById("tabOnboardBtn").classList.toggle("active", tab === "onboard");
+            document.getElementById("tabSignBtn").classList.toggle("active", tab === "sign");
+        }
+
+        let lookupTimeout = null;
+        function autoLookupRnc(val) {
+            const clean = val.replace(/\D/g, "");
+            const statusEl = document.getElementById("rncStatus");
+            const rsInput = document.getElementById("rsInput");
+
+            if (clean.length === 9 || clean.length === 11) {
+                clearTimeout(lookupTimeout);
+                lookupTimeout = setTimeout(async () => {
+                    statusEl.style.display = "inline-flex";
+                    statusEl.textContent = "Consultando DGII...";
+                    try {
+                        const res = await fetch("/v1/dgii/rnc/" + clean);
+                        if (res.ok) {
+                            const data = await res.json();
+                            if (data.razon_social) {
+                                rsInput.value = data.razon_social;
+                                statusEl.innerHTML = "✓ " + data.razon_social + " (" + (data.tipo || "DGII") + ")";
+                            }
+                        } else {
+                            statusEl.textContent = "RNC con formato válido. Completa la razón social.";
+                        }
+                    } catch (e) {
+                        statusEl.style.display = "none";
+                    }
+                }, 300);
+            } else {
+                statusEl.style.display = "none";
+            }
+        }
+
+        async function handleOnboard(e) {
+            e.preventDefault();
+            const btn = document.getElementById("onboardSubmitBtn");
+            const resEl = document.getElementById("onboardResult");
+            btn.disabled = true;
+            btn.textContent = "Procesando en Bóveda Renace e-CF...";
+            resEl.style.display = "none";
+
+            const fd = new FormData(document.getElementById("onboardForm"));
+
+            try {
+                const res = await fetch("/v1/onboarding/register", {
+                    method: "POST",
+                    body: fd
+                });
+                const data = await res.json();
+                resEl.style.display = "block";
+                if (res.ok && data.success) {
+                    resEl.className = "live-status success";
+                    resEl.innerHTML = `
+                        <h4 style="color:var(--accent-green); font-size:1.1rem; margin-bottom:8px;">✓ Contribuyente Registrado Exitosamente</h4>
+                        <p><strong>RNC:</strong> ${data.rnc} | <strong>Razón Social:</strong> ${data.razon_social}</p>
+                        <p><strong>Certificado Serial:</strong> ${data.cert.serial || "Almacenado"}</p>
+                        <p><strong>Vigencia:</strong> ${data.cert.valid_from} ➔ ${data.cert.valid_to}</p>
+                        <p style="margin-top:8px; color:var(--text-secondary);">El certificado se encuentra cifrado con <strong>AES-256-GCM</strong> en CertVault y el esquema <code>tenant_${data.rnc}</code> ha sido creado.</p>
+                        ${data.excel_saved ? "<p style=\"color:var(--accent); margin-top:6px;\">📁 Set de Pruebas Excel almacenado y listo para ejecución.</p>" : ""}
+                    `;
+                } else {
+                    resEl.className = "live-status error";
+                    resEl.innerHTML = `<h4 style="color:#EF4444;">Error en registro</h4><p>${data.detail || "Verifica los datos y contraseña del certificado."}</p>`;
+                }
+            } catch (err) {
+                resEl.style.display = "block";
+                resEl.className = "live-status error";
+                resEl.innerHTML = `<h4 style="color:#EF4444;">Error de conexión</h4><p>${err.message}</p>`;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "Registrar e Incorporar Contribuyente";
+            }
+        }
+
+        async function handleSignXml(e) {
+            e.preventDefault();
+            const btn = document.getElementById("signSubmitBtn");
+            const resEl = document.getElementById("signResult");
+            btn.disabled = true;
+            btn.textContent = "Firmando con XAdES-BES...";
+            resEl.style.display = "none";
+
+            const fd = new FormData(document.getElementById("signForm"));
+
+            try {
+                const res = await fetch("/v1/onboarding/firmar-postulacion", {
+                    method: "POST",
+                    body: fd
+                });
+                if (res.ok) {
+                    const blob = await res.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = "postulacion_firmada.xml";
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    window.URL.revokeObjectURL(url);
+
+                    resEl.style.display = "block";
+                    resEl.className = "live-status success";
+                    resEl.innerHTML = `
+                        <h4 style="color:var(--accent-green);">✓ Archivo Firmado y Descargado</h4>
+                        <p>El archivo <code>postulacion_firmada.xml</code> ha sido firmado con éxito y se descargó en tu equipo. Ahora puedes subirlo directamente a la Oficina Virtual de la DGII.</p>
+                    `;
+                } else {
+                    const err = await res.json();
+                    resEl.style.display = "block";
+                    resEl.className = "live-status error";
+                    resEl.innerHTML = `<h4 style="color:#EF4444;">Error al firmar</h4><p>${err.detail || "Verifica la contraseña del certificado."}</p>`;
+                }
+            } catch (err) {
+                resEl.style.display = "block";
+                resEl.className = "live-status error";
+                resEl.innerHTML = `<h4 style="color:#EF4444;">Error de red</h4><p>${err.message}</p>`;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "⚡ Firmar XML y Descargar";
+            }
+        }
+    </script>
+</body>
+</html>
