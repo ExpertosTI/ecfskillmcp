@@ -471,6 +471,9 @@ async def main():
         orig_ecfs[encf] = xml_orig
         signed_ecfs[encf] = xml_firmado
         sec_codes[encf] = sec_code
+        xml_out_dir = Path("/tmp/xml_firmados")
+        xml_out_dir.mkdir(parents=True, exist_ok=True)
+        (xml_out_dir / f"{TENANT_RNC}{encf}.xml").write_bytes(xml_firmado)
         print(f"  [XSD OK] #{idx:02d} {encf} (Tipo {tipo}) | SecCode={sec_code} | len={len(xml_firmado)} bytes")
 
     print("\n=== STEP 2: Building, Signing & XSD-Validating all 4 RFCE XMLs ===")
@@ -494,6 +497,7 @@ async def main():
         rfce_rows_by_encf[encf] = r
         orig_rfces[encf] = xml_orig
         signed_rfces[encf] = xml_firmado
+        (xml_out_dir / f"{TENANT_RNC}{encf}_rfce.xml").write_bytes(xml_firmado)
         print(f"  [XSD OK] RFCE #{idx:02d} {encf} | SecCode={sec_code} | len={len(xml_firmado)} bytes")
 
     if validate_only:
