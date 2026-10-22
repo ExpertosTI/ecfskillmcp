@@ -16,7 +16,7 @@ import asyncpg
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives.serialization import pkcs12
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, Response
 from lxml import etree
 
@@ -34,10 +34,17 @@ def set_db_pool(pool: asyncpg.Pool):
     _db_pool = pool
 
 
-def _get_pool() -> asyncpg.Pool:
-    if _db_pool is None:
-        raise HTTPException(status_code=503, detail="Database pool not initialized")
-    return _db_pool
+async def get_db_pool(request: Request) -> asyncpg.Pool:
+    pool = getattr(request.app.state, "db_pool", None) or _db_pool
+    if pool is not None:
+        return pool
+    from ecf_core.utils import sanitize_dsn
+    db_url = sanitize_dsn(os.environ.get("DATABASE_URL", ""))
+    if db_url:
+        pool = await asyncpg.create_pool(dsn=db_url, min_size=2, max_size=10)
+        set_db_pool(pool)
+        return pool
+    raise HTTPException(status_code=503, detail="Base de datos no disponible")
 
 
 NAMESPACE_DS = "http://www.w3.org/2000/09/xmldsig#"
@@ -151,7 +158,7 @@ async def firmar_postulacion_endpoint(
         return Response(
             content=signed_bytes,
             media_type="application/xml",
-            headers={"Content-Disposition": f"attachment; filename=\"{filename}\""},
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
         )
     except Exception as e:
         logger.error("Error firmando postulación: %s", e, exc_info=True)
@@ -160,6 +167,7 @@ async def firmar_postulacion_endpoint(
 
 @router.post("/register")
 async def register_client_endpoint(
+    request: Request,
     rnc: str = Form(...),
     razon_social: Optional[str] = Form(None),
     email: Optional[str] = Form(None),
@@ -167,11 +175,11 @@ async def register_client_endpoint(
     cert_file: UploadFile = File(...),
     cert_password: str = Form(...),
     excel_file: Optional[UploadFile] = File(None),
+    db: asyncpg.Pool = Depends(get_db_pool),
 ):
     """Registra un nuevo cliente/tenant, cifra y guarda su certificado digital en Bóveda,
-    y si se provee el Excel, guarda el Set de Pruebas.
+    y procesa tanto Set de Pruebas Excel como XML de Postulación.
     """
-    db = _get_pool()
     rnc_clean = "".join(filter(str.isdigit, rnc))
     if not (len(rnc_clean) in (9, 11)):
         raise HTTPException(status_code=422, detail="RNC o Cédula inválido (debe tener 9 u 11 dígitos)")
@@ -200,6 +208,26 @@ async def register_client_endpoint(
                 if not rs or rs == "None":
                     rs = f"Contribuyente {rnc_clean}"
 
+    # Directorio persistente del tenant en servidor
+    tenant_dir = pathlib.Path(f"/app/data/tenants/{rnc_clean}")
+    tenant_dir.mkdir(parents=True, exist_ok=True)
+    subfolders = [
+        "CERTIFICADO",
+        "POSTULACION",
+        "SET_DE_PRUEBAS",
+        "APROBACION_COMERCIAL",
+        "PASO_4_SIMULACION",
+        "PASO_5_REPRESENTACION_IMPRESA",
+        "SUBIR_A_DGII_CONSUMO_MENOR_250K",
+        "XML_FIRMADOS",
+    ]
+    for sub in subfolders:
+        (tenant_dir / sub).mkdir(exist_ok=True)
+
+    # Guardar copia del .p12
+    cert_filename = cert_file.filename or f"{rnc_clean}_certificado.p12"
+    (tenant_dir / "CERTIFICADO" / cert_filename).write_bytes(p12_data)
+
     async with db.acquire() as conn:
         tenant_row = await conn.fetchrow(
             "SELECT id, rnc, razon_social FROM public.tenants WHERE rnc = $1 AND deleted_at IS NULL",
@@ -209,22 +237,37 @@ async def register_client_endpoint(
         if tenant_row:
             tenant_id = str(tenant_row["id"])
             logger.info("Tenant ya existe para RNC %s (id=%s). Actualizando certificado.", rnc_clean, tenant_id)
+            await conn.execute(
+                """
+                UPDATE public.tenants
+                SET razon_social = COALESCE(NULLIF($1, ''), razon_social),
+                    email = COALESCE(NULLIF($2, ''), email),
+                    telefono = COALESCE(NULLIF($3, ''), telefono),
+                    updated_at = NOW()
+                WHERE id = $4
+                """,
+                rs,
+                email or "",
+                telefono or "",
+                uuid.UUID(tenant_id),
+            )
         else:
             tenant_id = str(uuid.uuid4())
             raw_api_key = f"sk_cert_{secrets.token_hex(24)}"
-            api_key_hash = hashlib.sha256(raw_api_key.encode()).hexdigest()
+            api_key = raw_api_key[:64]
             webhook_secret = secrets.token_hex(32)
             encrypted_webhook_secret = vault.cifrar_campo(webhook_secret)
+            schema_name = f"tenant_{rnc_clean}"
 
             await conn.execute(
                 """
                 INSERT INTO public.tenants (
-                    id, rnc, razon_social, nombre_comercial, email,
-                    plan, ambiente, api_key_hash, webhook_secret,
+                    id, rnc, razon_social, nombre_comercial, email, telefono,
+                    plan, estado, schema_name, ambiente, api_key, odoo_webhook_secret,
                     max_ecf_mensual, is_platform_operator, created_at, updated_at
                 ) VALUES (
-                    $1, $2, $3, $4, $5,
-                    profesional, certificacion, $6, $7,
+                    $1, $2, $3, $4, $5, $6,
+                    'profesional', 'activo', $7, 'certificacion', $8, $9,
                     5000, FALSE, NOW(), NOW()
                 )
                 """,
@@ -233,11 +276,13 @@ async def register_client_endpoint(
                 rs,
                 rs,
                 email or f"admin@{rnc_clean}.com",
-                api_key_hash,
+                telefono or "",
+                schema_name,
+                api_key,
                 encrypted_webhook_secret,
             )
             try:
-                await conn.execute("SELECT public.crear_schema_tenant($1)", rnc_clean)
+                await conn.execute("SELECT public.crear_schema_tenant($1)", schema_name)
             except Exception as schema_err:
                 logger.warning("crear_schema_tenant error: %s", schema_err)
 
@@ -245,10 +290,10 @@ async def register_client_endpoint(
             for tipo in tipos_secuencias:
                 await conn.execute(
                     """
-                    INSERT INTO public.ncf_secuencias (
+                    INSERT INTO public.ncf_sequences (
                         tenant_id, tipo_ecf, prefijo, secuencia_actual, secuencia_max, activo
-                    ) VALUES ($1, $2, $3, 1, 999999, TRUE)
-                    ON CONFLICT DO NOTHING
+                    ) VALUES ($1, $2, $3, 1, 9999999999, TRUE)
+                    ON CONFLICT (tenant_id, tipo_ecf) DO NOTHING
                     """,
                     uuid.UUID(tenant_id),
                     tipo,
@@ -265,17 +310,54 @@ async def register_client_endpoint(
         cert_repo = CertVaultRepository(db, vault)
         cert_id = await cert_repo.guardar(tenant_id, p12_data, cert_password.encode("utf-8"))
 
-    excel_saved = False
-    excel_filename = None
+    # Metadata local del cliente
+    info_json = {
+        "rnc": rnc_clean,
+        "razon_social": rs,
+        "email": email or "",
+        "telefono": telefono or "",
+        "cert_serial": metadatos.get("serial"),
+        "valid_from": str(metadatos.get("valid_from")),
+        "valid_to": str(metadatos.get("valid_to")),
+        "registrado_en": datetime.now(timezone.utc).isoformat(),
+        "ambiente": "certificacion",
+        "software": "RENECF 2.5",
+    }
+    (tenant_dir / "cliente_info.json").write_text(json.dumps(info_json, indent=2, ensure_ascii=False))
+
+    # Manejo inteligente del archivo adjunto en Paso 3
+    doc_info = {}
+    signed_postulacion_b64 = None
     if excel_file and excel_file.filename:
-        excel_bytes = await excel_file.read()
-        if len(excel_bytes) > 0:
-            data_dir = pathlib.Path("/app/data/set_pruebas")
-            data_dir.mkdir(parents=True, exist_ok=True)
-            excel_filename = f"{rnc_clean}_{excel_file.filename}"
-            excel_path = data_dir / excel_filename
-            excel_path.write_bytes(excel_bytes)
-            excel_saved = True
+        file_bytes = await excel_file.read()
+        fname = excel_file.filename.lower()
+        if fname.endswith(".xml"):
+            # Es un XML de postulación: FIRMARLO DE INMEDIATO
+            try:
+                signed_xml = firmar_postulacion_xml(file_bytes, p12_data, cert_password.encode("utf-8"))
+                orig_path = tenant_dir / "POSTULACION" / excel_file.filename
+                firmada_name = excel_file.filename.replace(".xml", "_firmada.xml")
+                firmada_path = tenant_dir / "POSTULACION" / firmada_name
+                orig_path.write_bytes(file_bytes)
+                firmada_path.write_bytes(signed_xml)
+                signed_postulacion_b64 = base64.b64encode(signed_xml).decode("utf-8")
+                doc_info = {
+                    "tipo": "postulacion_xml",
+                    "filename": firmada_name,
+                    "mensaje": "¡XML de Postulación firmado digitalmente con éxito!",
+                }
+            except Exception as sign_err:
+                logger.error("Fallo al autofirmar XML de postulación: %s", sign_err)
+                doc_info = {"tipo": "postulacion_error", "error": str(sign_err)}
+        else:
+            # Es un Excel .xlsx del Set de Pruebas
+            excel_path = tenant_dir / "SET_DE_PRUEBAS" / excel_file.filename
+            excel_path.write_bytes(file_bytes)
+            doc_info = {
+                "tipo": "excel_set_pruebas",
+                "filename": excel_file.filename,
+                "mensaje": "Set de Pruebas Excel almacenado y listo para ejecución.",
+            }
 
     return {
         "success": True,
@@ -289,16 +371,16 @@ async def register_client_endpoint(
             "valid_to": str(metadatos.get("valid_to")),
             "subject": metadatos.get("subject"),
         },
-        "excel_saved": excel_saved,
-        "excel_filename": excel_filename,
+        "documento": doc_info,
+        "signed_postulacion_b64": signed_postulacion_b64,
+        "signed_postulacion_name": doc_info.get("filename"),
         "mensaje": f"Contribuyente {rnc_clean} ({rs}) registrado y certificado con éxito en Renace e-CF.",
     }
 
 
 @router.get("/status/{rnc}")
-async def get_client_status(rnc: str):
+async def get_client_status(rnc: str, db: asyncpg.Pool = Depends(get_db_pool)):
     """Consulta el estado del tenant y su certificado."""
-    db = _get_pool()
     rnc_clean = "".join(filter(str.isdigit, rnc))
     async with db.acquire() as conn:
         tenant = await conn.fetchrow(
